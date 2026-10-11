@@ -83,15 +83,15 @@ function renderDay() {
   $('#macros').innerHTML = [['Protéines', 'protein'], ['Glucides', 'carbs'], ['Lipides', 'fat']]
     .map(([label, k]) => bar(label, p.eaten[k], p.macros[k])).join('');
   $('#burn').textContent = `Dépense : base ${r0(p.bmr)} + pas ${r0(p.steps)} + exercice ${r0(p.exercise)} + digestion ${r0(p.digestion)} · objectif ${r0(p.target.kcal)} kcal`;
-  $('#steps').value = day.steps || '';
+  if (document.activeElement !== $('#steps')) $('#steps').value = day.steps || '';
   $('#sync-status').textContent = !state.settings.gistId ? ''
     : syncFailed ? 'Synchro des pas impossible'
       : state.stepsSyncedAt ? `Pas de Santé mis à jour à ${new Date(state.stepsSyncedAt).toTimeString().slice(0, 5)}` : '';
   $('#meals').innerHTML = day.meals
-    .map(m => `<li data-id="${m.id}"><span>${esc(m.time)} · ${esc(m.name)}</span><b>${r0(m.kcal)} kcal</b></li>`)
+    .map(m => `<li data-id="${esc(m.id)}"><span>${esc(m.time)} · ${esc(m.name)}</span><b>${r0(m.kcal)} kcal</b></li>`)
     .join('') || '<li class="empty">Aucun repas</li>';
   $('#exercises').innerHTML = day.exercises
-    .map(x => `<li data-id="${x.id}"><span>${esc(x.name)}${x.minutes ? ` · ${x.minutes} min` : ''}</span><b>${r0(x.kcal)} kcal</b></li>`)
+    .map(x => `<li data-id="${esc(x.id)}"><span>${esc(x.name)}${x.minutes ? ` · ${esc(x.minutes)} min` : ''}</span><b>${r0(x.kcal)} kcal</b></li>`)
     .join('') || '<li class="empty">Aucune séance</li>';
 }
 
@@ -104,7 +104,7 @@ function setSteps(n) {
 }
 $('#steps').onchange = e => {
   const n = e.target.value === '' ? 0 : C.parseSteps(e.target.value);
-  if (n == null) return alert('Nombre de pas invalide (0 à 100 000).');
+  if (n == null) { alert('Nombre de pas invalide (0 à 100 000).'); return render(); }
   setSteps(n);
 };
 $('#paste-steps').onclick = async () => {
@@ -226,7 +226,7 @@ $('#meals').onclick = e => {
 // === Ajouter : menu, manuel, favoris ===
 function renderFavorites() {
   $('#favorites').innerHTML = state.favorites
-    .map(f => `<li data-id="${f.id}"><span>${esc(f.name)}</span><b>${r0(f.kcal)} kcal</b><button data-del aria-label="Supprimer">✕</button></li>`)
+    .map(f => `<li data-id="${esc(f.id)}"><span>${esc(f.name)}</span><b>${r0(f.kcal)} kcal</b><button data-del aria-label="Supprimer">✕</button></li>`)
     .join('') || '<li class="empty">Aucun favori</li>';
 }
 
