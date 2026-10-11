@@ -68,3 +68,23 @@ test('analyze : quota épuisé (429)', async () => {
   const fake = async () => ({ ok: false, status: 429, json: async () => ({ error: { message: 'quota' } }) });
   await assert.rejects(G.analyze({ apiKey: 'k', model: 'm', base64: 'A' }, fake), /Quota du jour/);
 });
+
+const busy = { ok: false, status: 503, json: async () => ({ error: { message: 'high demand' } }) };
+const noWait = async () => {};
+
+test('analyze : modèle surchargé (503) puis succès → relance', async () => {
+  const replies = [busy, { ok: true, status: 200, json: async () => reply(meal) }];
+  let calls = 0;
+  const r = await G.analyze({ apiKey: 'k', model: 'm', base64: 'A' }, async () => replies[calls++], noWait);
+  assert.equal(calls, 2);
+  assert.equal(r.dish, 'Riz au poulet');
+});
+
+test('analyze : toujours surchargé (503) → 3 essais puis message', async () => {
+  let calls = 0;
+  await assert.rejects(
+    G.analyze({ apiKey: 'k', model: 'm', base64: 'A' }, async () => { calls++; return busy; }, noWait),
+    /surchargé/,
+  );
+  assert.equal(calls, 3);
+});

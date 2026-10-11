@@ -54,27 +54,37 @@ export function parseResponse(json) {
 export function httpError(status, message = '') {
   if (status === 429) return 'Quota du jour atteint. Saisis le repas à la main ou réessaie demain.';
   if (status === 404) return 'Modèle introuvable : change-le dans les réglages.';
+  if (status === 503) return 'Gemini est surchargé en ce moment. Réessaie dans une minute.';
   if (status === 401 || status === 403 || /api key/i.test(message)) {
     return 'Clé refusée : vérifie la clé et ses restrictions.';
   }
   return `Erreur Gemini (${status}) : ${message}`;
 }
 
-export async function analyze({ apiKey, model, base64, description }, fetchFn = fetch) {
-  let res;
-  try {
-    res = await fetchFn(
-      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-        body: JSON.stringify(buildBody(base64, description)),
-      },
-    );
-  } catch {
-    throw new Error("Hors ligne : le scan n'est pas disponible.");
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+export async function analyze({ apiKey, model, base64, description }, fetchFn = fetch, wait = sleep) {
+  for (let attempt = 0; ; attempt++) {
+    let res;
+    try {
+      res = await fetchFn(
+        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+          body: JSON.stringify(buildBody(base64, description)),
+        },
+      );
+    } catch {
+      throw new Error("Hors ligne : le scan n'est pas disponible.");
+    }
+    const json = await res.json().catch(() => ({}));
+    // 503 = modèle surchargé, souvent passager : 2 relances (après 2 s puis 4 s)
+    if (res.status === 503 && attempt < 2) {
+      await wait(2000 * (attempt + 1));
+      continue;
+    }
+    if (!res.ok) throw new Error(httpError(res.status, json.error?.message));
+    return parseResponse(json);
   }
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(httpError(res.status, json.error?.message));
-  return parseResponse(json);
 }
