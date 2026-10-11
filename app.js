@@ -140,6 +140,113 @@ $('#onboard-form').onsubmit = e => {
   commit();
 };
 
+// === Repas ===
+const NUM_FIELDS = [['grams', 'g'], ['kcal', 'kcal'], ['protein', 'P'], ['carbs', 'G'], ['fat', 'L']];
+const pick = it => ({ grams: +it.grams || 0, kcal: +it.kcal || 0, protein: +it.protein || 0, carbs: +it.carbs || 0, fat: +it.fat || 0 });
+const withBase = it => ({ name: it.name || '', ...pick(it), base: pick(it) });
+const emptyItem = name => ({ name, grams: 0, kcal: 0, protein: 0, carbs: 0, fat: 0 });
+let editing = null; // { id?, time?, items: [{ name, grams, kcal, protein, carbs, fat, base }] }
+
+function openMeal(meal, low = false) {
+  editing = { id: meal.id, time: meal.time, items: meal.items.map(withBase) };
+  const f = $('#meal-form');
+  f.reset();
+  f.elements.name.value = meal.name || '';
+  $('#meal-low').hidden = !low;
+  $('#meal-delete').hidden = !meal.id;
+  renderItems();
+  $('#dlg-meal').showModal();
+}
+
+function renderItems() {
+  $('#meal-items').innerHTML = editing.items.map((it, i) => `<div class="item" data-i="${i}">
+    <input data-k="name" value="${esc(it.name)}" placeholder="Aliment">
+    ${NUM_FIELDS.map(([k, l]) => `<label>${l}<input data-k="${k}" type="number" inputmode="decimal" step="any" min="0" value="${r1(it[k])}"></label>`).join('')}
+    <button type="button" data-del aria-label="Retirer">✕</button></div>`).join('');
+  renderTotal();
+}
+
+function renderTotal() {
+  const t = C.totals(editing.items);
+  $('#meal-total').textContent = `Total : ${r0(t.kcal)} kcal · P ${r0(t.protein)} g · G ${r0(t.carbs)} g · L ${r0(t.fat)} g`;
+}
+
+$('#meal-items').oninput = e => {
+  const row = e.target.closest('.item');
+  if (!row) return;
+  const it = editing.items[row.dataset.i];
+  const k = e.target.dataset.k;
+  if (k === 'name') { it.name = e.target.value; return; }
+  const v = Number(e.target.value) || 0;
+  if (k === 'grams') {
+    Object.assign(it, C.scaleItem(it.base, v));
+    for (const [f] of NUM_FIELDS.slice(1)) row.querySelector(`[data-k=${f}]`).value = r1(it[f]);
+  } else {
+    it[k] = v;
+    it.base = pick(it); // une valeur saisie à la main devient la nouvelle référence
+  }
+  renderTotal();
+};
+
+$('#meal-items').onclick = e => {
+  if (!e.target.closest('[data-del]')) return;
+  editing.items.splice(e.target.closest('.item').dataset.i, 1);
+  renderItems();
+};
+$('#meal-add-item').onclick = () => { editing.items.push(withBase(emptyItem(''))); renderItems(); };
+$('#meal-cancel').onclick = () => $('#dlg-meal').close();
+
+$('#meal-form').onsubmit = e => {
+  e.preventDefault();
+  if (!editing.items.length) return alert('Ajoute au moins un aliment.');
+  const f = e.target;
+  const items = editing.items.map(({ base, ...it }) => it);
+  const meal = { id: editing.id || crypto.randomUUID(), time: editing.time || now(), name: f.elements.name.value.trim(), items, ...C.totals(items) };
+  const day = S.day(state, date);
+  const i = day.meals.findIndex(m => m.id === meal.id);
+  if (i >= 0) day.meals[i] = meal; else day.meals.push(meal);
+  if (f.elements.fav.checked) state.favorites.push({ ...meal, id: crypto.randomUUID() });
+  $('#dlg-meal').close();
+  commit();
+};
+
+$('#meal-delete').onclick = () => {
+  const day = S.day(state, date);
+  day.meals = day.meals.filter(m => m.id !== editing.id);
+  $('#dlg-meal').close();
+  commit();
+};
+
+$('#meals').onclick = e => {
+  const id = e.target.closest('li')?.dataset.id;
+  const m = id && S.day(state, date).meals.find(x => x.id === id);
+  if (m) openMeal(m);
+};
+
+// === Ajouter : menu, manuel, favoris ===
+function renderFavorites() {
+  $('#favorites').innerHTML = state.favorites
+    .map(f => `<li data-id="${f.id}"><span>${esc(f.name)}</span><b>${r0(f.kcal)} kcal</b><button data-del aria-label="Supprimer">✕</button></li>`)
+    .join('') || '<li class="empty">Aucun favori</li>';
+}
+
+$('#add').onclick = () => { renderFavorites(); $('#dlg-add').showModal(); };
+$('#open-manual').onclick = () => { $('#dlg-add').close(); openMeal({ name: '', items: [emptyItem('')] }); };
+
+$('#favorites').onclick = e => {
+  const id = e.target.closest('li')?.dataset.id;
+  if (!id) return;
+  if (e.target.closest('[data-del]')) {
+    state.favorites = state.favorites.filter(f => f.id !== id);
+    S.save(state);
+    return renderFavorites();
+  }
+  const fav = state.favorites.find(f => f.id === id);
+  S.day(state, date).meals.push({ ...fav, id: crypto.randomUUID(), time: now() });
+  $('#dlg-add').close();
+  commit();
+};
+
 // === Démarrage ===
 show('day');
 if (state.profile && state.weights.length) render();
