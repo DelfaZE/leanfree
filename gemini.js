@@ -63,12 +63,18 @@ export function httpError(status, message = '') {
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
+// Modèle plus léger, essayé une fois si le modèle choisi reste surchargé (503).
+export const FALLBACK_MODEL = 'gemini-flash-lite-latest';
+
 export async function analyze({ apiKey, model, base64, description }, fetchFn = fetch, wait = sleep) {
-  for (let attempt = 0; ; attempt++) {
+  // 503 = modèle surchargé, souvent passager : 2 relances (après 2 s puis 4 s), puis le modèle de secours
+  const tries = [model, model, model, ...(model === FALLBACK_MODEL ? [] : [FALLBACK_MODEL])];
+  for (let i = 0; ; i++) {
+    if (i === 1 || i === 2) await wait(2000 * i);
     let res;
     try {
       res = await fetchFn(
-        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(tries[i])}:generateContent`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
@@ -79,12 +85,8 @@ export async function analyze({ apiKey, model, base64, description }, fetchFn = 
       throw new Error("Hors ligne : le scan n'est pas disponible.");
     }
     const json = await res.json().catch(() => ({}));
-    // 503 = modèle surchargé, souvent passager : 2 relances (après 2 s puis 4 s)
-    if (res.status === 503 && attempt < 2) {
-      await wait(2000 * (attempt + 1));
-      continue;
-    }
+    if (res.status === 503 && i < tries.length - 1) continue;
     if (!res.ok) throw new Error(httpError(res.status, json.error?.message));
-    return parseResponse(json);
+    return { ...parseResponse(json), model: tries[i] };
   }
 }

@@ -57,6 +57,7 @@ test('analyze : succès, URL et clé correctes', async () => {
   assert.match(call.url, /\/v1beta\/models\/gemini-flash-latest:generateContent$/);
   assert.equal(call.opts.headers['x-goog-api-key'], 'KEY');
   assert.equal(r.dish, 'Riz au poulet');
+  assert.equal(r.model, 'gemini-flash-latest');
 });
 
 test('analyze : hors ligne', async () => {
@@ -80,11 +81,42 @@ test('analyze : modèle surchargé (503) puis succès → relance', async () => 
   assert.equal(r.dish, 'Riz au poulet');
 });
 
-test('analyze : toujours surchargé (503) → 3 essais puis message', async () => {
+test('analyze : 3 × 503 puis modèle de secours qui répond', async () => {
+  const urls = [];
+  const fake = async url => {
+    urls.push(url);
+    return urls.length <= 3 ? busy : { ok: true, status: 200, json: async () => reply(meal) };
+  };
+  const r = await G.analyze({ apiKey: 'k', model: 'gemini-flash-latest', base64: 'A' }, fake, noWait);
+  assert.equal(urls.length, 4);
+  assert.match(urls[2], /models\/gemini-flash-latest:/);
+  assert.match(urls[3], /models\/gemini-flash-lite-latest:/);
+  assert.equal(G.FALLBACK_MODEL, 'gemini-flash-lite-latest');
+  assert.equal(r.dish, 'Riz au poulet');
+  assert.equal(r.model, G.FALLBACK_MODEL);
+});
+
+test('analyze : secours aussi surchargé → message', async () => {
   let calls = 0;
   await assert.rejects(
     G.analyze({ apiKey: 'k', model: 'm', base64: 'A' }, async () => { calls++; return busy; }, noWait),
     /surchargé/,
   );
+  assert.equal(calls, 4);
+});
+
+test('analyze : déjà sur le modèle de secours → pas de 4e essai', async () => {
+  let calls = 0;
+  await assert.rejects(
+    G.analyze({ apiKey: 'k', model: G.FALLBACK_MODEL, base64: 'A' }, async () => { calls++; return busy; }, noWait),
+    /surchargé/,
+  );
   assert.equal(calls, 3);
+});
+
+test('analyze : 429 → ni relance ni secours', async () => {
+  let calls = 0;
+  const quota = { ok: false, status: 429, json: async () => ({}) };
+  await assert.rejects(G.analyze({ apiKey: 'k', model: 'm', base64: 'A' }, async () => { calls++; return quota; }, noWait), /Quota/);
+  assert.equal(calls, 1);
 });
