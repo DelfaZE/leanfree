@@ -1,0 +1,88 @@
+:root {
+  --bg: #f6f7f9; --card: #fff; --text: #111827; --muted: #6b7280;
+  --accent: #16a34a; --over: #dc2626; --line: #e5e7eb;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #0b0f17; --card: #151b26; --text: #e5e7eb; --muted: #9ca3af; --line: #263041; }
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  margin: 0; font: 16px/1.4 -apple-system, system-ui, sans-serif;
+  background: var(--bg); color: var(--text);
+  padding: calc(8px + env(safe-area-inset-top)) 16px calc(80px + env(safe-area-inset-bottom));
+}
+h1 { font-size: 1.3rem; margin: 12px 0; }
+h2 { font-size: 1.05rem; margin: 20px 0 8px; display: flex; align-items: center; justify-content: space-between; }
+button, .button {
+  font: inherit; border: 0; border-radius: 10px; padding: 10px 14px; cursor: pointer;
+  background: var(--accent); color: #fff; display: inline-block; text-align: center;
+}
+button.small { padding: 4px 12px; }
+button.danger { background: var(--over); }
+button:disabled { opacity: .5; }
+input, select, textarea {
+  font: inherit; width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 8px;
+  background: var(--card); color: var(--text);
+}
+label { display: block; margin: 8px 0; color: var(--muted); font-size: .9rem; }
+label > input, label > select, label > textarea { margin-top: 4px; }
+label.check { display: flex; gap: 8px; align-items: center; }
+label.check input { width: auto; margin: 0; }
+.card { background: var(--card); border-radius: 14px; padding: 12px 14px; margin: 12px 0; }
+.daynav { display: flex; align-items: center; justify-content: space-between; }
+.daynav button { background: var(--card); color: var(--text); }
+.ring { display: block; width: 200px; margin: 8px auto; }
+.ring circle { fill: none; stroke-width: 12; }
+.ring .track { stroke: var(--line); }
+.ring .fill { stroke: var(--accent); stroke-linecap: round; }
+.ring.over .fill { stroke: var(--over); }
+.ring text { text-anchor: middle; fill: var(--text); }
+.ring .big { font-size: 26px; font-weight: 700; }
+.ring .small { font-size: 10px; fill: var(--muted); }
+.bar { margin: 6px 0; font-size: .85rem; }
+.bar div { height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--accent); }
+.status { color: var(--muted); font-size: .8rem; }
+.warn { background: #fef3c7; color: #92400e; padding: 8px 10px; border-radius: 8px; font-size: .85rem; }
+.row { display: flex; gap: 8px; align-items: end; }
+.row label { flex: 1; margin: 0; }
+.list { list-style: none; padding: 0; margin: 0; }
+.list li {
+  display: flex; gap: 8px; align-items: center; justify-content: space-between;
+  background: var(--card); padding: 10px 12px; border-radius: 10px; margin: 6px 0;
+}
+.list li span { flex: 1; }
+.list li button { background: none; color: var(--muted); padding: 4px 8px; }
+.list .empty { color: var(--muted); justify-content: center; }
+.fab {
+  position: fixed; right: 20px; bottom: calc(84px + env(safe-area-inset-bottom));
+  width: 56px; height: 56px; border-radius: 50%; font-size: 28px; padding: 0; box-shadow: 0 4px 12px #0004;
+}
+.tabs {
+  position: fixed; left: 0; right: 0; bottom: 0; display: flex; background: var(--card);
+  border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom);
+}
+.tabs button { flex: 1; background: none; color: var(--muted); border-radius: 0; }
+.tabs button.on { color: var(--accent); font-weight: 600; }
+dialog {
+  width: min(92vw, 480px); max-height: 90vh; border: 0; border-radius: 16px;
+  background: var(--bg); color: var(--text); padding: 16px;
+}
+dialog::backdrop { background: #0008; }
+dialog > button, dialog > .button, dialog form > button, dialog form[method=dialog] button { width: 100%; margin-top: 8px; }
+.item {
+  display: grid; grid-template-columns: repeat(5, 1fr) auto; gap: 4px;
+  background: var(--card); padding: 8px; border-radius: 10px; margin: 6px 0;
+}
+.item [data-k=name] { grid-column: 1 / -1; }
+.item label { margin: 0; font-size: .7rem; }
+.item input { padding: 6px; }
+.item button { background: none; color: var(--muted); align-self: end; padding: 6px; }
+#scan-preview { width: 100%; border-radius: 10px; margin: 8px 0; }
+.chart { width: 100%; height: auto; background: var(--card); border-radius: 10px; }
+.chart polyline { fill: none; stroke-width: 2; }
+.chart .s0 { stroke: var(--muted); }
+.chart .s1 { stroke: var(--accent); stroke-width: 3; }
+.chart text { font-size: 10px; fill: var(--muted); }

@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="LeanFree">
+  <title>LeanFree</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="style.css">
+  <script src="vendor/zxing.min.js" defer></script>
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <section id="view-day">
+    <header class="daynav">
+      <button id="prev" aria-label="Jour précédent">←</button>
+      <h1 id="day-label"></h1>
+      <button id="next" aria-label="Jour suivant">→</button>
+    </header>
+    <div id="ring"></div>
+    <p id="floor-warn" class="warn" hidden>Rythme trop agressif : objectif remonté au plancher de sécurité.</p>
+    <div id="macros" class="card"></div>
+    <p id="burn" class="status"></p>
+    <div class="row card">
+      <label>Pas <input id="steps" type="number" inputmode="numeric" min="0" max="100000"></label>
+      <button id="paste-steps">Coller</button>
+    </div>
+    <p id="sync-status" class="status"></p>
+    <h2>Repas</h2>
+    <ul id="meals" class="list"></ul>
+    <h2>Exercice <button id="add-exercise" class="small" aria-label="Ajouter une séance">+</button></h2>
+    <ul id="exercises" class="list"></ul>
+    <button id="add" class="fab" aria-label="Ajouter un repas">+</button>
+  </section>
+
+  <section id="view-weight" hidden>
+    <h1>Poids</h1>
+    <p id="goal-info" class="card"></p>
+    <form id="weight-form" class="card">
+      <label>Date <input name="date" type="date" required></label>
+      <label>Poids (kg) <input name="kg" type="number" step="0.1" min="20" max="400" required></label>
+      <label>Masse grasse (%) <input name="fatPct" type="number" step="0.1" min="2" max="70"></label>
+      <label>Masse musculaire (%) <input name="musclePct" type="number" step="0.1" min="10" max="95"></label>
+      <button>Enregistrer la pesée</button>
+    </form>
+    <h2>Poids et moyenne 7 jours</h2>
+    <div id="chart-kg"></div>
+    <h2>Masse grasse (%)</h2>
+    <div id="chart-fat"></div>
+    <h2>Masse musculaire (%)</h2>
+    <div id="chart-muscle"></div>
+    <h2>Historique</h2>
+    <ul id="weights" class="list"></ul>
+  </section>
+
+  <section id="view-settings" hidden>
+    <h1>Réglages</h1>
+    <form id="profile-form" class="card">
+      <h2>Profil</h2>
+      <div class="profile-fields"></div>
+      <button>Enregistrer le profil</button>
+    </form>
+    <form id="api-form" class="card">
+      <h2>IA (Gemini)</h2>
+      <label>Clé API <input name="apiKey" type="password" autocomplete="off" placeholder="AIza…"></label>
+      <label>Modèle <input name="model" placeholder="gemini-flash-latest"></label>
+      <button>Enregistrer</button>
+    </form>
+    <form id="sync-form" class="card">
+      <h2>Synchro des pas (Santé)</h2>
+      <label>Gist des pas <input name="gistId" autocomplete="off" placeholder="URL ou identifiant du gist"></label>
+      <button>Enregistrer et synchroniser</button>
+    </form>
+    <div class="card">
+      <h2>Sauvegarde</h2>
+      <button id="export">Exporter (JSON)</button>
+      <label class="button">Importer <input id="import" type="file" accept="application/json,.json" hidden></label>
+    </div>
+  </section>
+
+  <nav class="tabs">
+    <button data-view="day">Journée</button>
+    <button data-view="weight">Poids</button>
+    <button data-view="settings">Réglages</button>
+  </nav>
+
+  <dialog id="dlg-onboard">
+    <form id="onboard-form">
+      <h2>Bienvenue 👋</h2>
+      <div class="profile-fields"></div>
+      <label>Poids actuel (kg) <input name="kg" type="number" step="0.1" min="20" max="400" required></label>
+      <label>Masse grasse (%) <input name="fatPct" type="number" step="0.1" min="2" max="70"></label>
+      <button>Commencer</button>
+    </form>
+  </dialog>
+
+  <dialog id="dlg-add">
+    <h2>Ajouter un repas</h2>
+    <button id="open-scan">📷 Scan IA</button>
+    <label class="button">▦ Code-barres <input id="barcode-photo" type="file" accept="image/*" capture="environment" hidden></label>
+    <button id="open-manual">✏️ Saisie manuelle</button>
+    <h3>⭐ Favoris</h3>
+    <ul id="favorites" class="list"></ul>
+    <form method="dialog"><button>Fermer</button></form>
+  </dialog>
+
+  <dialog id="dlg-scan">
+    <h2>Scan IA</h2>
+    <label class="button">📷 Prendre la photo <input id="scan-photo" type="file" accept="image/*" capture="environment" hidden></label>
+    <img id="scan-preview" alt="" hidden>
+    <label>Description (facultatif) <textarea id="scan-desc" rows="2" placeholder="ex. riz basmati, poulet, un peu d'huile"></textarea></label>
+    <p id="scan-status" class="status"></p>
+    <button id="scan-go" disabled>Analyser</button>
+    <form method="dialog"><button>Annuler</button></form>
+  </dialog>
+
+  <dialog id="dlg-meal">
+    <form id="meal-form">
+      <h2>Repas</h2>
+      <p id="meal-low" class="warn" hidden>Confiance faible : vérifie bien les quantités.</p>
+      <label>Nom <input name="name" required></label>
+      <div id="meal-items"></div>
+      <button type="button" id="meal-add-item" class="small">+ aliment</button>
+      <p id="meal-total"></p>
+      <label class="check"><input type="checkbox" name="fav"> ⭐ Ajouter aux favoris</label>
+      <button>Enregistrer</button>
+      <button type="button" id="meal-delete" class="danger">Supprimer</button>
+      <button type="button" id="meal-cancel">Annuler</button>
+    </form>
+  </dialog>
+
+  <dialog id="dlg-ex">
+    <form id="ex-form">
+      <h2>Exercice</h2>
+      <label>Type <select name="type"></select></label>
+      <label class="ex-min">Durée (min) <input name="minutes" type="number" min="1" max="600"></label>
+      <label class="ex-kcal">Kcal <input name="kcal" type="number" min="1" max="5000"></label>
+      <button>Enregistrer</button>
+      <button type="button" id="ex-delete" class="danger">Supprimer</button>
+      <button type="button" id="ex-cancel">Annuler</button>
+    </form>
+  </dialog>
+</body>
+</html>
