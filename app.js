@@ -55,6 +55,7 @@ document.querySelectorAll('.tabs button').forEach(b => { b.onclick = () => show(
 function render() {
   if (!state.profile || !state.weights.length) return;
   renderDay();
+  renderWeight();
 }
 
 function ring(frac, big, small) {
@@ -322,6 +323,119 @@ $('#barcode-photo').onchange = async e => {
   if (!item) alert(msg);
   const name = item?.name || `Produit ${code}`;
   openMeal({ name, items: [item || emptyItem(name)] });
+};
+
+// === Exercice ===
+const EX_TYPES = [...C.EXERCISES, { key: 'autre', label: 'Autre (kcal saisies)' }];
+$('#ex-form').elements.type.innerHTML = EX_TYPES.map(x => `<option value="${x.key}">${x.label}</option>`).join('');
+let editingEx = null;
+
+function syncExFields() {
+  const f = $('#ex-form');
+  const other = f.elements.type.value === 'autre';
+  f.querySelector('.ex-min').hidden = other;
+  f.querySelector('.ex-kcal').hidden = !other;
+  f.elements.minutes.required = !other;
+  f.elements.kcal.required = other;
+}
+$('#ex-form').elements.type.onchange = syncExFields;
+
+function openExercise(ex) {
+  editingEx = ex || null;
+  const f = $('#ex-form');
+  f.reset();
+  f.elements.type.value = ex?.type || 'muscu';
+  f.elements.minutes.value = ex?.minutes || 60;
+  f.elements.kcal.value = ex?.type === 'autre' ? r0(ex.kcal) : '';
+  $('#ex-delete').hidden = !ex;
+  syncExFields();
+  $('#dlg-ex').showModal();
+}
+
+$('#add-exercise').onclick = () => openExercise();
+$('#exercises').onclick = e => {
+  const id = e.target.closest('li')?.dataset.id;
+  const x = id && S.day(state, date).exercises.find(v => v.id === id);
+  if (x) openExercise(x);
+};
+$('#ex-cancel').onclick = () => $('#dlg-ex').close();
+
+$('#ex-form').onsubmit = e => {
+  e.preventDefault();
+  const f = e.target;
+  const type = f.elements.type.value;
+  const def = C.EXERCISES.find(x => x.key === type);
+  const minutes = +f.elements.minutes.value;
+  const ex = def
+    ? { type, name: def.label, minutes, met: def.met, kcal: C.exerciseKcal(def.met, minutes, C.latest(state.weights).kg) }
+    : { type, name: 'Autre', kcal: +f.elements.kcal.value };
+  ex.id = editingEx?.id || crypto.randomUUID();
+  const day = S.day(state, date);
+  const i = day.exercises.findIndex(x => x.id === ex.id);
+  if (i >= 0) day.exercises[i] = ex; else day.exercises.push(ex);
+  $('#dlg-ex').close();
+  commit();
+};
+
+$('#ex-delete').onclick = () => {
+  const day = S.day(state, date);
+  day.exercises = day.exercises.filter(x => x.id !== editingEx.id);
+  $('#dlg-ex').close();
+  commit();
+};
+
+// === Poids ===
+function chart(series, w = 320, h = 140) {
+  if (series[0].length < 2) return '<p class="status">Au moins 2 mesures nécessaires.</p>';
+  const all = series.flat();
+  const min = Math.min(...all), max = Math.max(...all), span = max - min || 1;
+  const pts = s => s.map((v, i) =>
+    `${((i / (s.length - 1)) * (w - 40) + 30).toFixed(1)},${(h - 10 - ((v - min) / span) * (h - 20)).toFixed(1)}`).join(' ');
+  return `<svg viewBox="0 0 ${w} ${h}" class="chart">${series.map((s, i) => `<polyline points="${pts(s)}" class="s${i}"/>`).join('')}
+    <text x="0" y="14">${r1(max)}</text><text x="0" y="${h - 4}">${r1(min)}</text></svg>`;
+}
+
+function renderWeight() {
+  const { profile } = state;
+  const w = C.latest(state.weights);
+  const weeks = C.weeksToGoal(w.kg, profile.goalKg, profile.rateKgPerWeek);
+  const when = d => d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+  $('#goal-info').textContent = weeks == null
+    ? `Objectif ${profile.goalKg} kg : pas de date (rythme de maintien ou dans le mauvais sens).`
+    : weeks === 0
+      ? `Objectif ${profile.goalKg} kg atteint 🎉`
+      : `${w.kg} kg → ${profile.goalKg} kg : vers le ${when(new Date(Date.now() + weeks * 7 * 864e5))} (${Math.ceil(weeks)} semaines).`;
+  const sorted = state.weights;
+  $('#chart-kg').innerHTML = chart([sorted.map(x => x.kg), C.avg7(sorted).map(x => x.kg)]);
+  for (const [k, el] of [['fatPct', '#chart-fat'], ['musclePct', '#chart-muscle']]) {
+    $(el).innerHTML = chart([sorted.filter(x => x[k] != null).map(x => x[k])]);
+  }
+  $('#weights').innerHTML = [...sorted].reverse().map(x => `<li data-date="${esc(x.date)}"><span>${esc(x.date)}</span>
+    <b>${x.kg} kg${x.fatPct != null ? ` · ${x.fatPct} % MG` : ''}${x.musclePct != null ? ` · ${x.musclePct} % MM` : ''}</b>
+    <button data-del aria-label="Supprimer">✕</button></li>`).join('');
+}
+
+$('#weight-form').elements.date.value = today;
+$('#weight-form').onsubmit = e => {
+  e.preventDefault();
+  const d = new FormData(e.target);
+  S.upsertWeight(state, { date: d.get('date'), kg: +d.get('kg'), fatPct: optNum(d.get('fatPct')), musclePct: optNum(d.get('musclePct')) });
+  e.target.reset();
+  e.target.elements.date.value = today;
+  commit();
+};
+
+$('#weights').onclick = e => {
+  const d = e.target.closest('li')?.dataset.date;
+  if (!d) return;
+  if (e.target.closest('[data-del]')) {
+    if (state.weights.length === 1) return alert('Garde au moins une pesée.');
+    state.weights = state.weights.filter(w => w.date !== d);
+    return commit();
+  }
+  const f = $('#weight-form');
+  f.reset();
+  fillForm(f, state.weights.find(w => w.date === d));
 };
 
 // === Démarrage ===
