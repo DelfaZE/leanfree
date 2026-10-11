@@ -418,14 +418,25 @@ async function startCamera() {
   }
   const c = document.createElement('canvas');
   const g = c.getContext('2d', { willReadFrequently: true });
+  const r = document.createElement('canvas');
+  const rg = r.getContext('2d', { willReadFrequently: true });
+  let last = null;
   const tick = () => {
     if (run !== camRun) return;
     if (v.videoWidth) {
       c.width = v.videoWidth;
       c.height = v.videoHeight;
       g.drawImage(v, 0, 0);
-      const code = decodeCanvas(c);
-      if (code) return gotCode(code);
+      // Codes-barres verticaux : on essaie aussi l'image tournée de 90°
+      r.width = c.height;
+      r.height = c.width;
+      rg.translate(r.width, 0);
+      rg.rotate(Math.PI / 2);
+      rg.drawImage(c, 0, 0);
+      const code = decodeCanvas(c) || decodeCanvas(r);
+      // Accepté seulement s'il est lu deux fois de suite à l'identique (évite les erreurs de lecture)
+      if (code && code === last) return gotCode(code);
+      last = code;
     }
     setTimeout(tick, 100);
   };
