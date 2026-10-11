@@ -1,6 +1,6 @@
 :root {
   --bg: #f6f7f9; --card: #fff; --text: #111827; --muted: #6b7280;
-  --accent: #16a34a; --over: #dc2626; --line: #e5e7eb;
+  --accent: #15803d; --over: #dc2626; --line: #e5e7eb;
   color-scheme: light dark;
 }
 @media (prefers-color-scheme: dark) {
@@ -19,7 +19,7 @@ button, .button {
   font: inherit; border: 0; border-radius: 10px; padding: 10px 14px; cursor: pointer;
   background: var(--accent); color: #fff; display: inline-block; text-align: center;
 }
-button.small { padding: 4px 12px; }
+button.small { padding: 4px 12px; min-height: 44px; }
 button.danger { background: var(--over); }
 button:disabled { opacity: .5; }
 input, select, textarea {
@@ -54,7 +54,7 @@ label.check input { width: auto; margin: 0; }
   background: var(--card); padding: 10px 12px; border-radius: 10px; margin: 6px 0;
 }
 .list li span { flex: 1; }
-.list li button { background: none; color: var(--muted); padding: 4px 8px; }
+.list li button { background: none; color: var(--muted); padding: 4px 8px; min-height: 44px; min-width: 44px; }
 .list .empty { color: var(--muted); justify-content: center; }
 .fab {
   position: fixed; right: 20px; bottom: calc(84px + env(safe-area-inset-bottom));
