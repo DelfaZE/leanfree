@@ -133,14 +133,24 @@ function setSteps(n) {
   S.day(state, date).steps = n;
   commit();
 }
-$('#steps').onchange = e => {
+// Enregistré à chaque frappe : sur iPhone, « change » ne part pas toujours (bouton touché, app quittée).
+$('#steps').oninput = e => {
   const n = e.target.value === '' ? 0 : C.parseSteps(e.target.value);
-  if (n == null) { alert('Nombre de pas invalide (0 à 100 000).'); return render(); }
-  setSteps(n);
+  if (n != null) setSteps(n);
+};
+$('#steps').onchange = e => {
+  if (e.target.value !== '' && C.parseSteps(e.target.value) == null) {
+    alert('Nombre de pas invalide (0 à 100 000).');
+    render();
+  }
 };
 $('#paste-steps').onclick = async () => {
-  let text = '';
-  try { text = await navigator.clipboard.readText(); } catch { /* refusé ou vide */ }
+  let text;
+  try {
+    text = await navigator.clipboard.readText();
+  } catch {
+    return alert('Le navigateur bloque le presse-papiers : tape le nombre de pas dans le champ.');
+  }
   const n = C.parseSteps(text);
   if (n == null) return alert('Aucun nombre de pas dans le presse-papiers.');
   setSteps(n);
