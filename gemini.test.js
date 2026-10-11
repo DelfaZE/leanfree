@@ -30,6 +30,10 @@ test('parseResponse : aucun aliment', () => {
   assert.throws(() => G.parseResponse(reply({ ...meal, items: [] })), /Aucun aliment détecté/);
 });
 
+test('parseResponse : réponse JSON null', () => {
+  assert.throws(() => G.parseResponse(reply(null)), /Aucun aliment/);
+});
+
 test('parseResponse : réponse illisible ou bloquée', () => {
   assert.throws(() => G.parseResponse({ candidates: [{ content: { parts: [{ text: '{' }] } }] }), /illisible/);
   assert.throws(() => G.parseResponse({}), /illisible/);

@@ -45,7 +45,7 @@ export function parseResponse(json) {
   } catch {
     throw new Error('Réponse illisible, réessaie.');
   }
-  if (!Array.isArray(data.items) || data.items.length === 0) {
+  if (!Array.isArray(data?.items) || data.items.length === 0) {
     throw new Error('Aucun aliment détecté. Essaie un autre angle.');
   }
   return data;

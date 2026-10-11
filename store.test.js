@@ -66,3 +66,18 @@ test('importJson refuse un fichier invalide', () => {
   assert.throws(() => S.importJson('{"a":1}', S.emptyState()));
   assert.throws(() => S.importJson('pas du json', S.emptyState()));
 });
+
+test('importJson refuse days/favorites/weights mal formés', () => {
+  assert.throws(() => S.importJson('{"profile":{},"weights":[{}]}', S.emptyState()));
+  assert.throws(() => S.importJson('{"profile":{},"weights":[],"days":[]}', S.emptyState()));
+  assert.throws(() => S.importJson('{"profile":{},"weights":[],"favorites":{}}', S.emptyState()));
+});
+
+test('load : réglages partiels fusionnés avec les défauts', () => {
+  const st = mem();
+  st.setItem('leanfree', '{"profile":{"age":28},"settings":{"apiKey":"K"}}');
+  const s = S.load(st);
+  assert.equal(s.settings.model, S.DEFAULT_MODEL);
+  assert.equal(s.settings.gistId, '');
+  assert.equal(s.settings.apiKey, 'K');
+});

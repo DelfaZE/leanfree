@@ -7,7 +7,8 @@ export function emptyState() {
 
 export function load(storage = globalThis.localStorage) {
   try {
-    return { ...emptyState(), ...JSON.parse(storage.getItem(KEY)) };
+    const saved = JSON.parse(storage.getItem(KEY));
+    return { ...emptyState(), ...saved, settings: { ...emptyState().settings, ...saved?.settings } };
   } catch {
     return emptyState();
   }
@@ -37,9 +38,19 @@ export function importJson(text, current) {
   if (!data || typeof data !== 'object' || !data.profile || !Array.isArray(data.weights)) {
     throw new Error('Fichier invalide');
   }
+  const isObj = v => v !== null && typeof v === 'object' && !Array.isArray(v);
+  if (
+    (data.days != null && !isObj(data.days)) ||
+    (data.favorites != null && !Array.isArray(data.favorites)) ||
+    !data.weights.every(w => w && typeof w.date === 'string' && Number.isFinite(w.kg))
+  ) {
+    throw new Error('Fichier invalide');
+  }
   return {
     ...emptyState(),
     ...data,
+    days: data.days ?? {},
+    favorites: data.favorites ?? [],
     settings: {
       apiKey: current.settings.apiKey,
       model: data.settings?.model || current.settings.model,
