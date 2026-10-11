@@ -291,6 +291,7 @@ $('#scan-go').onclick = async () => {
   try {
     const base64 = await toJpegBase64(scanFile);
     const r = await analyze({ apiKey: state.settings.apiKey, model: state.settings.model, base64, description: $('#scan-desc').value.trim() });
+    if (!$('#dlg-scan').open) return;
     $('#dlg-scan').close();
     openMeal({ name: r.dish, items: r.items }, r.confidence === 'low');
   } catch (err) {
@@ -412,7 +413,7 @@ function renderWeight() {
     $(el).innerHTML = chart([sorted.filter(x => x[k] != null).map(x => x[k])]);
   }
   $('#weights').innerHTML = [...sorted].reverse().map(x => `<li data-date="${esc(x.date)}"><span>${esc(x.date)}</span>
-    <b>${x.kg} kg${x.fatPct != null ? ` · ${x.fatPct} % MG` : ''}${x.musclePct != null ? ` · ${x.musclePct} % MM` : ''}</b>
+    <b>${x.kg} kg${x.fatPct != null ? ` · ${esc(x.fatPct)} % MG` : ''}${x.musclePct != null ? ` · ${esc(x.musclePct)} % MM` : ''}</b>
     <button data-del aria-label="Supprimer">✕</button></li>`).join('');
 }
 
@@ -437,6 +438,7 @@ $('#weights').onclick = e => {
   const f = $('#weight-form');
   f.reset();
   fillForm(f, state.weights.find(w => w.date === d));
+  f.scrollIntoView({ behavior: 'smooth' });
 };
 
 // === Réglages ===
@@ -465,6 +467,12 @@ $('#sync-form').onsubmit = async e => {
   e.preventDefault();
   state.settings = { ...state.settings, gistId: gistIdFrom(new FormData(e.target).get('gistId')) };
   e.target.elements.gistId.value = state.settings.gistId;
+  S.save(state);
+  if (!state.settings.gistId) {
+    syncFailed = false;
+    render();
+    return alert('Synchro des pas désactivée.');
+  }
   await syncSteps();
   alert(syncFailed ? 'Synchro des pas impossible : vérifie le gist.' : 'Pas synchronisés.');
 };
@@ -503,7 +511,10 @@ else $('#dlg-onboard').showModal();
 syncSteps();
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState !== 'visible') return;
-  if (C.ymd() !== today) today = date = C.ymd();
+  if (C.ymd() !== today) {
+    today = date = C.ymd();
+    $('#weight-form').elements.date.value = today;
+  }
   render();
   syncSteps();
 });
