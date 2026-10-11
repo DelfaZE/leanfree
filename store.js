@@ -35,20 +35,22 @@ export function exportJson(state) {
 
 export function importJson(text, current) {
   const data = JSON.parse(text);
-  if (!data || typeof data !== 'object' || !data.profile || !Array.isArray(data.weights)) {
+  if (!data || typeof data !== 'object' || !data.profile || !Array.isArray(data.weights) || !data.weights.length) {
     throw new Error('Fichier invalide');
   }
   const isObj = v => v !== null && typeof v === 'object' && !Array.isArray(v);
   if (
     (data.days != null && !isObj(data.days)) ||
     (data.favorites != null && !Array.isArray(data.favorites)) ||
-    !data.weights.every(w => w && typeof w.date === 'string' && Number.isFinite(w.kg))
+    !data.weights.every(w => w && typeof w.date === 'string' && Number.isFinite(w.kg) &&
+      ['fatPct', 'musclePct'].every(k => w[k] == null || Number.isFinite(w[k])))
   ) {
     throw new Error('Fichier invalide');
   }
   return {
     ...emptyState(),
     ...data,
+    weights: [...new Map(data.weights.map(w => [w.date, w])).values()].sort((a, b) => a.date.localeCompare(b.date)),
     days: data.days ?? {},
     favorites: data.favorites ?? [],
     settings: {

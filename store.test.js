@@ -81,3 +81,14 @@ test('load : réglages partiels fusionnés avec les défauts', () => {
   assert.equal(s.settings.gistId, '');
   assert.equal(s.settings.apiKey, 'K');
 });
+
+test('importJson refuse des pesées vides ou des % non numériques', () => {
+  assert.throws(() => S.importJson('{"profile":{},"weights":[]}', S.emptyState()));
+  const bad = JSON.stringify({ profile: {}, weights: [{ date: '2026-10-11', kg: 87, fatPct: '<img>' }] });
+  assert.throws(() => S.importJson(bad, S.emptyState()));
+});
+
+test('importJson trie et dédoublonne les pesées (dernière gagne)', () => {
+  const file = JSON.stringify({ profile: {}, weights: [{ date: '2026-10-11', kg: 87 }, { date: '2026-10-01', kg: 88 }, { date: '2026-10-11', kg: 86 }] });
+  assert.deepEqual(S.importJson(file, S.emptyState()).weights, [{ date: '2026-10-01', kg: 88 }, { date: '2026-10-11', kg: 86 }]);
+});
