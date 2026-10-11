@@ -168,8 +168,13 @@ peuvent donc évoluer quand Google change de version. Le nom du modèle reste mo
 les réglages pour figer une version.
 
 ### Code-barres
-Photo du code → décodage par la bibliothèque copiée dans `vendor/` (Safari iOS ne supporte
-pas `BarcodeDetector`). Si le décodage échoue, on peut taper les chiffres du code.
+Scan en direct par la caméra arrière (`getUserMedia`, vidéo affichée avec un cadre de visée).
+Toutes les ~100 ms, une image de la vidéo est décodée par la bibliothèque copiée dans `vendor/`
+(Safari iOS ne supporte pas `BarcodeDetector`), en EAN-13/8, UPC-A/E et Code 128, avec l'option
+« essayer plus fort ». La caméra est coupée dès qu'un code est lu ou que l'écran se ferme.
+En secours : « Depuis une photo » (image réduite à 1280 px, puis tournée de 90° si besoin) et
+« Saisir le code » (chiffres tapés à la main). Si la caméra est refusée, un message s'affiche
+et ces deux options restent disponibles.
 → `GET https://world.openfoodfacts.org/api/v2/product/{code}.json`
 → `product_name` (sinon « Produit {code} ») ; kcal = `energy-kcal_100g`, ou à défaut
 `energy_100g` (en kJ) ÷ 4,184 ; macros = `proteins_100g`, `carbohydrates_100g`, `fat_100g`
