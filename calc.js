@@ -92,7 +92,7 @@ export function avg7(weights) {
 }
 
 export function parseSteps(text) {
-  const s = String(text ?? '').replace(/[\s  ]/g, '').replace(',', '.');
+  const s = String(text ?? '').replace(/\s/g, '').replace(',', '.');
   if (!/^\d+(\.\d+)?$/.test(s)) return null;
   const n = Math.round(Number(s));
   return n <= 100000 ? n : null;
