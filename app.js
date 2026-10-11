@@ -250,14 +250,20 @@ $('#favorites').onclick = e => {
 };
 
 // === Scan IA ===
-async function toJpegBase64(file, max = 1024) {
+async function scaledCanvas(file, max, rotate = false) {
   const img = await createImageBitmap(file);
   const s = Math.min(1, max / Math.max(img.width, img.height));
+  const w = Math.round(img.width * s), h = Math.round(img.height * s);
   const c = document.createElement('canvas');
-  c.width = Math.round(img.width * s);
-  c.height = Math.round(img.height * s);
-  c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-  return c.toDataURL('image/jpeg', 0.8).split(',')[1];
+  [c.width, c.height] = rotate ? [h, w] : [w, h];
+  const g = c.getContext('2d');
+  if (rotate) { g.translate(h, 0); g.rotate(Math.PI / 2); }
+  g.drawImage(img, 0, 0, w, h);
+  return c;
+}
+
+async function toJpegBase64(file) {
+  return (await scaledCanvas(file, 1024)).toDataURL('image/jpeg', 0.8).split(',')[1];
 }
 
 let scanFile = null;
@@ -301,30 +307,106 @@ $('#scan-go').onclick = async () => {
 };
 
 // === Code-barres ===
-async function decodeBarcode(file) {
-  const url = URL.createObjectURL(file);
+const bcStatus = t => { $('#bc-status').textContent = t; };
+const NO_CAMERA = 'Caméra indisponible : prends une photo du code ou saisis-le.';
+let camStream = null, camRun = 0, zxing = null;
+
+// Pas de BrowserMultiFormatReader pour la vidéo : avec TRY_HARDER, son canvas de capture partagé
+// se corrompt après le premier échec (0.21.3) et plus rien n'est lu. On décode donc nous-mêmes.
+function decodeCanvas(c) {
+  if (!zxing) {
+    const H = ZXing.DecodeHintType, F = ZXing.BarcodeFormat;
+    zxing = new ZXing.MultiFormatReader();
+    zxing.setHints(new Map([
+      [H.POSSIBLE_FORMATS, [F.EAN_13, F.EAN_8, F.UPC_A, F.UPC_E, F.CODE_128]],
+      [H.TRY_HARDER, true],
+    ]));
+  }
   try {
-    return (await new ZXing.BrowserMultiFormatReader().decodeFromImageUrl(url)).getText();
+    return zxing.decodeWithState(new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(new ZXing.HTMLCanvasElementLuminanceSource(c)))).getText();
   } catch {
-    return null;
-  } finally {
-    URL.revokeObjectURL(url);
+    return null; // aucun code sur cette image
   }
 }
 
-$('#barcode-photo').onchange = async e => {
-  const file = e.target.files[0];
-  e.target.value = '';
-  if (!file) return;
-  $('#dlg-add').close();
-  const code = (await decodeBarcode(file)) || prompt('Code illisible. Tape les chiffres du code-barres :')?.trim();
-  if (!code) return;
+function stopCamera() {
+  camRun++;
+  camStream?.getTracks().forEach(t => t.stop());
+  camStream = null;
+  $('#bc-video').srcObject = null;
+}
+
+async function startCamera() {
+  const run = ++camRun;
+  const v = $('#bc-video');
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1280 } } });
+    if (run !== camRun) return stream.getTracks().forEach(t => t.stop()); // fermé entre-temps
+    camStream = v.srcObject = stream;
+    await v.play();
+  } catch {
+    if (run === camRun) bcStatus(NO_CAMERA);
+    return;
+  }
+  const c = document.createElement('canvas');
+  const g = c.getContext('2d', { willReadFrequently: true });
+  const tick = () => {
+    if (run !== camRun) return;
+    if (v.videoWidth) {
+      c.width = v.videoWidth;
+      c.height = v.videoHeight;
+      g.drawImage(v, 0, 0);
+      const code = decodeCanvas(c);
+      if (code) return gotCode(code);
+    }
+    setTimeout(tick, 100);
+  };
+  tick();
+}
+
+// Photo : réduite à 1280 px (les photos de 12 Mpx échouent), puis tournée de 90° si besoin.
+async function decodePhoto(file) {
+  for (const rotate of [false, true]) {
+    const code = decodeCanvas(await scaledCanvas(file, 1280, rotate));
+    if (code) return code;
+  }
+  return null;
+}
+
+async function gotCode(code) {
+  stopCamera();
+  $('#dlg-barcode').close();
   let item = null;
   let msg = 'Produit inconnu : saisis-le à la main.';
   try { item = await lookup(code); } catch (err) { msg = err.message; }
   if (!item) alert(msg);
   const name = item?.name || `Produit ${code}`;
   openMeal({ name, items: [item || emptyItem(name)] });
+}
+
+$('#open-barcode').onclick = () => {
+  $('#dlg-add').close();
+  $('#bc-form').reset();
+  $('#bc-form').hidden = true;
+  bcStatus('');
+  $('#dlg-barcode').showModal();
+  if (navigator.mediaDevices?.getUserMedia) startCamera();
+  else bcStatus(NO_CAMERA);
+};
+$('#dlg-barcode').onclose = stopCamera;
+$('#bc-cancel').onclick = () => $('#dlg-barcode').close();
+$('#bc-manual').onclick = () => { $('#bc-form').hidden = false; $('#bc-form').elements.code.focus(); };
+$('#bc-form').onsubmit = e => { e.preventDefault(); gotCode(e.target.elements.code.value); };
+
+$('#bc-photo').onchange = async e => {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  bcStatus('Lecture du code…');
+  const code = await decodePhoto(file).catch(() => null);
+  if (code) return gotCode(code);
+  bcStatus('Code illisible sur la photo : saisis les chiffres.');
+  $('#bc-manual').onclick();
 };
 
 // === Exercice ===

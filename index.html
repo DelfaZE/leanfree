@@ -99,7 +99,7 @@
   <dialog id="dlg-add">
     <h2>Ajouter un repas</h2>
     <button id="open-scan">📷 Scan IA</button>
-    <label class="button">▦ Code-barres <input id="barcode-photo" type="file" accept="image/*" capture="environment" hidden></label>
+    <button id="open-barcode">▦ Code-barres</button>
     <button id="open-manual">✏️ Saisie manuelle</button>
     <h3>⭐ Favoris</h3>
     <ul id="favorites" class="list"></ul>
@@ -114,6 +114,19 @@
     <p id="scan-status" class="status"></p>
     <button id="scan-go" disabled>Analyser</button>
     <form method="dialog"><button>Annuler</button></form>
+  </dialog>
+
+  <dialog id="dlg-barcode">
+    <h2>Code-barres</h2>
+    <div class="scanner"><video id="bc-video" playsinline muted autoplay></video><div class="viewfinder"></div></div>
+    <p id="bc-status" class="status"></p>
+    <form id="bc-form" class="row" hidden>
+      <label>Code <input name="code" inputmode="numeric" pattern="[0-9]{6,14}" autocomplete="off" required></label>
+      <button>OK</button>
+    </form>
+    <button id="bc-manual" type="button">Saisir le code</button>
+    <label class="button">Depuis une photo <input id="bc-photo" type="file" accept="image/*" hidden></label>
+    <button id="bc-cancel" type="button">Annuler</button>
   </dialog>
 
   <dialog id="dlg-meal">

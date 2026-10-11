@@ -86,3 +86,6 @@ dialog > button, dialog > .button, dialog form > button, dialog form[method=dial
 .chart .s0 { stroke: var(--muted); }
 .chart .s1 { stroke: var(--accent); stroke-width: 3; }
 .chart text { font-size: 10px; fill: var(--muted); }
+.scanner { position: relative; background: #000; border-radius: 14px; overflow: hidden; aspect-ratio: 3 / 4; max-height: 55vh; margin: 8px auto; }
+.scanner video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.viewfinder { position: absolute; inset: 35% 8%; border: 3px solid #fff; border-radius: 12px; box-shadow: 0 0 0 100vmax #0006; }

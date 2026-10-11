@@ -1,5 +1,5 @@
 // Incrémenter VERSION à chaque déploiement pour que l'iPhone récupère la nouvelle version.
-const VERSION = 3;
+const VERSION = 4;
 const CACHE = `leanfree-v${VERSION}`;
 const FILES = ['./', 'index.html', 'style.css', 'app.js', 'calc.js', 'store.js', 'gemini.js', 'off.js', 'sync.js', 'vendor/zxing.min.js', 'manifest.json'];
 
