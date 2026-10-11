@@ -24,6 +24,7 @@ npx --yes serve -l 8080 .
 2. GitHub → Settings → Pages → Source : « Deploy from a branch », branche `main`, dossier `/ (root)`.
 3. L'app est publiée à `https://<toi>.github.io/leanfree/`.
 4. À chaque mise à jour : incrémenter `VERSION` dans `sw.js`, puis commit et push.
+5. Toutes les pages publiées sur `https://<toi>.github.io` partagent le même stockage : n'y publie pas d'autre projet que tu ne maîtrises pas (sinon il pourrait lire ta clé Gemini).
 
 ## Installer sur l'iPhone
 

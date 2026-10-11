@@ -1,10 +1,10 @@
 // Incrémenter VERSION à chaque déploiement pour que l'iPhone récupère la nouvelle version.
-const VERSION = 1;
+const VERSION = 2;
 const CACHE = `leanfree-v${VERSION}`;
 const FILES = ['./', 'index.html', 'style.css', 'app.js', 'calc.js', 'store.js', 'gemini.js', 'off.js', 'sync.js', 'vendor/zxing.min.js', 'manifest.json'];
 
 self.oninstall = e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES.map(f => new Request(f, { cache: 'reload' })))).then(() => self.skipWaiting()));
 };
 
 self.onactivate = e => {
@@ -17,5 +17,5 @@ self.onactivate = e => {
 
 self.onfetch = e => {
   if (e.request.method !== 'GET' || new URL(e.request.url).origin !== location.origin) return;
-  e.respondWith(caches.match(e.request).then(r => r || fetch(e.request)));
+  e.respondWith(caches.match(e.request, { ignoreSearch: true }).then(r => r || fetch(e.request)));
 };

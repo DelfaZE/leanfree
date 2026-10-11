@@ -480,8 +480,7 @@ $('#sync-form').onsubmit = async e => {
 $('#export').onclick = async () => {
   const file = new File([S.exportJson(state)], `leanfree-${today}.json`, { type: 'application/json' });
   if (navigator.canShare?.({ files: [file] })) {
-    try { await navigator.share({ files: [file] }); } catch { /* partage annulé */ }
-    return;
+    try { await navigator.share({ files: [file] }); return; } catch (err) { if (err.name === 'AbortError') return; }
   }
   const a = document.createElement('a');
   a.href = URL.createObjectURL(file);
