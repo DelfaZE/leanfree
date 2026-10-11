@@ -247,6 +247,83 @@ $('#favorites').onclick = e => {
   commit();
 };
 
+// === Scan IA ===
+async function toJpegBase64(file, max = 1024) {
+  const img = await createImageBitmap(file);
+  const s = Math.min(1, max / Math.max(img.width, img.height));
+  const c = document.createElement('canvas');
+  c.width = Math.round(img.width * s);
+  c.height = Math.round(img.height * s);
+  c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+  return c.toDataURL('image/jpeg', 0.8).split(',')[1];
+}
+
+let scanFile = null;
+$('#open-scan').onclick = () => {
+  $('#dlg-add').close();
+  if (!state.settings.apiKey) {
+    show('settings');
+    return alert('Ajoute ta clé Gemini dans les réglages.');
+  }
+  scanFile = null;
+  $('#scan-preview').hidden = true;
+  $('#scan-go').disabled = true;
+  $('#scan-desc').value = '';
+  $('#scan-status').textContent = '';
+  $('#dlg-scan').showModal();
+};
+
+$('#scan-photo').onchange = e => {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  scanFile = file;
+  $('#scan-preview').src = URL.createObjectURL(file);
+  $('#scan-preview').hidden = false;
+  $('#scan-go').disabled = false;
+};
+
+$('#scan-go').onclick = async () => {
+  $('#scan-go').disabled = true;
+  $('#scan-status').textContent = 'Analyse en cours…';
+  try {
+    const base64 = await toJpegBase64(scanFile);
+    const r = await analyze({ apiKey: state.settings.apiKey, model: state.settings.model, base64, description: $('#scan-desc').value.trim() });
+    $('#dlg-scan').close();
+    openMeal({ name: r.dish, items: r.items }, r.confidence === 'low');
+  } catch (err) {
+    $('#scan-status').textContent = err.message;
+    $('#scan-go').disabled = false;
+  }
+};
+
+// === Code-barres ===
+async function decodeBarcode(file) {
+  const url = URL.createObjectURL(file);
+  try {
+    return (await new ZXing.BrowserMultiFormatReader().decodeFromImageUrl(url)).getText();
+  } catch {
+    return null;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+$('#barcode-photo').onchange = async e => {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  $('#dlg-add').close();
+  const code = (await decodeBarcode(file)) || prompt('Code illisible. Tape les chiffres du code-barres :')?.trim();
+  if (!code) return;
+  let item = null;
+  let msg = 'Produit inconnu : saisis-le à la main.';
+  try { item = await lookup(code); } catch (err) { msg = err.message; }
+  if (!item) alert(msg);
+  const name = item?.name || `Produit ${code}`;
+  openMeal({ name, items: [item || emptyItem(name)] });
+};
+
 // === Démarrage ===
 show('day');
 if (state.profile && state.weights.length) render();
