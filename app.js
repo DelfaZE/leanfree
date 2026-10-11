@@ -46,6 +46,7 @@ function readProfile(f) {
 
 // === Navigation ===
 function show(view) {
+  if (view === 'settings') fillSettings();
   for (const v of ['day', 'weight', 'settings']) $(`#view-${v}`).hidden = v !== view;
   document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.view === view));
 }
@@ -436,6 +437,63 @@ $('#weights').onclick = e => {
   const f = $('#weight-form');
   f.reset();
   fillForm(f, state.weights.find(w => w.date === d));
+};
+
+// === Réglages ===
+function fillSettings() {
+  fillForm($('#profile-form'), state.profile);
+  fillForm($('#api-form'), state.settings);
+  fillForm($('#sync-form'), state.settings);
+}
+
+$('#profile-form').onsubmit = e => {
+  e.preventDefault();
+  state.profile = readProfile(e.target);
+  commit();
+  alert('Profil enregistré.');
+};
+
+$('#api-form').onsubmit = e => {
+  e.preventDefault();
+  const d = new FormData(e.target);
+  state.settings = { ...state.settings, apiKey: d.get('apiKey').trim(), model: d.get('model').trim() || S.DEFAULT_MODEL };
+  S.save(state);
+  alert('Réglages enregistrés.');
+};
+
+$('#sync-form').onsubmit = async e => {
+  e.preventDefault();
+  state.settings = { ...state.settings, gistId: gistIdFrom(new FormData(e.target).get('gistId')) };
+  e.target.elements.gistId.value = state.settings.gistId;
+  await syncSteps();
+  alert(syncFailed ? 'Synchro des pas impossible : vérifie le gist.' : 'Pas synchronisés.');
+};
+
+$('#export').onclick = async () => {
+  const file = new File([S.exportJson(state)], `leanfree-${today}.json`, { type: 'application/json' });
+  if (navigator.canShare?.({ files: [file] })) {
+    try { await navigator.share({ files: [file] }); } catch { /* partage annulé */ }
+    return;
+  }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(file);
+  a.download = file.name;
+  a.click();
+};
+
+$('#import').onchange = async e => {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  try {
+    state = S.importJson(await file.text(), state);
+  } catch {
+    return alert("Fichier invalide : rien n'a été modifié.");
+  }
+  S.save(state);
+  fillSettings();
+  render();
+  alert('Données importées.');
 };
 
 // === Démarrage ===
