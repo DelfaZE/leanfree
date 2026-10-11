@@ -53,22 +53,16 @@ secret, et LeanFree les relit à chaque ouverture.
 2. **Token** : GitHub → Settings → Developer settings → Personal access tokens →
    **Tokens (classic)** → Generate new token (classic) → cocher **uniquement `gist`** →
    copier le token (`ghp_…`). Il ne sert qu'au raccourci.
-3. **Raccourci « Synchro pas LeanFree »** (app Raccourcis → **+**) :
-   1. **Date** (actuelle) → **Formater la date**, format personnalisé `yyyy-MM-dd` →
-      **Définir la variable** `Aujourdhui`.
-   2. **Ajuster la date** : Date actuelle moins 1 jour → **Formater la date** `yyyy-MM-dd` →
-      variable `Hier`.
-   3. **Rechercher des échantillons de santé** : Type = Pas, Date de début = aujourd'hui →
-      **Calculer les statistiques** : Somme → variable `PasAujourdhui`.
-   4. Pareil pour hier (filtre « Date de début est hier », ou « est entre » minuit d'hier et
-      minuit d'aujourd'hui) → variable `PasHier`.
-   5. **Texte** : `{"[Aujourdhui]": "[PasAujourdhui]", "[Hier]": "[PasHier]"}`, en insérant
-      les variables à la place des crochets. Garde les guillemets autour des nombres :
-      LeanFree accepte « 8 432 » comme « 8432 ».
-   6. **Obtenir le contenu de l'URL** : `https://api.github.com/gists/<ID_DU_GIST>`,
+3. **Raccourci « Synchro pas LeanFree »** (app Raccourcis → **+**), 3 actions :
+   1. **Rechercher des échantillons de santé** : Type = Pas, filtre « Date de début est
+      aujourd'hui ».
+   2. **Calculer les statistiques** : Somme (sur les échantillons de l'action 1).
+   3. **Obtenir le contenu de l'URL** : `https://api.github.com/gists/<ID_DU_GIST>`,
       méthode **PATCH**, en-têtes `Authorization` = `Bearer <TOKEN>` et
       `Accept` = `application/vnd.github+json`, corps **JSON** : `files` (dictionnaire) →
-      `steps.json` (dictionnaire) → `content` (texte) = le Texte de l'étape 5.
+      `steps.json` (dictionnaire) → `content` (texte) = le résultat de l'action 2.
+   LeanFree date le total avec l'heure d'envoi : l'envoi de 23:30 fixe le total de la journée.
+   (L'ancien format `{"2026-10-11": 8432, …}` reste accepté.)
 4. **Automatisations** : Raccourcis → Automatisation → **+** → Heure de la journée → 12:00,
    Quotidien → **Exécuter immédiatement** → « Synchro pas LeanFree ». Recommencer pour
    18:00, 21:00 et 23:30.

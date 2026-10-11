@@ -17,6 +17,13 @@ test('parseGist : fichier absent ou JSON invalide', () => {
   assert.throws(() => Y.parseGist(gist('{')));
 });
 
+test('parseGist : format simple (juste le total du jour) → daté avec updated_at', () => {
+  const g = n => ({ updated_at: '2026-10-11T12:00:00Z', files: { 'steps.json': { content: n } } });
+  assert.deepEqual(Y.parseGist(g('8432')).days, { '2026-10-11': 8432 });
+  assert.deepEqual(Y.parseGist(g('8 432')).days, { '2026-10-11': 8432 });
+  assert.deepEqual(Y.parseGist(g('{}')).days, {});
+});
+
 test("gistIdFrom accepte l'identifiant ou l'URL", () => {
   assert.equal(Y.gistIdFrom(' https://gist.github.com/dede/0f1e2d3c4b5a/ '), '0f1e2d3c4b5a');
   assert.equal(Y.gistIdFrom('0f1e2d3c4b5a'), '0f1e2d3c4b5a');
